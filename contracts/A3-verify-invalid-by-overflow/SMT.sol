@@ -1,5 +1,5 @@
 /**
- *Submitted for verification at Etherscan.io on 2018-01-27
+ *Submitted for verification at Etherscan.io on 2017-12-09
 */
 
 // Abstract contract for the full ERC 20 Token standard
@@ -101,10 +101,9 @@ contract Controlled is Owned{
         return true;
     }
 
-    function addLock(address[] _addrs) public onlyOwner returns (bool success){
-        for (uint256 i = 0; i < _addrs.length; i++){
-            locked[_addrs[i]]=true;
-         }
+    function addLock(address _addr) public onlyOwner returns (bool success){
+        require(_addr!=msg.sender);
+        locked[_addr]=true;
         return true;
     }
 
@@ -113,10 +112,8 @@ contract Controlled is Owned{
         return true;
     }
 
-    function removeLock(address[] _addrs) public onlyOwner returns (bool success){
-        for (uint256 i = 0; i < _addrs.length; i++){
-            locked[_addrs[i]]=false;
-         }
+    function removeLock(address _addr) public onlyOwner returns (bool success){
+        locked[_addr]=false;
         return true;
     }
 
@@ -176,55 +173,55 @@ contract StandardToken is Token,Controlled {
     mapping (address => mapping (address => uint256)) allowed;
 }
 
-contract MESH is StandardToken {
+contract SMT is StandardToken {
 
     function () public {
         revert();
     }
 
-    string public name = "MeshBox";                   //fancy name
+    string public name = "SmartMesh Token";                   //fancy name
     uint8 public decimals = 18;                //How many decimals to show. ie. There could 1000 base units with 3 decimals. Meaning 0.980 SBX = 980 base units. It's like comparing 1 wei to 1 ether.
-    string public symbol = "MESH";                 //An identifier
-    string public version = 'v0.1';       //MESH 0.1 standard. Just an arbitrary versioning scheme.
+    string public symbol = "SMT";                 //An identifier
+    string public version = 'v0.1';       //SMT 0.1 standard. Just an arbitrary versioning scheme.
     uint256 public allocateEndTime;
 
     
     // The nonce for avoid transfer replay attacks
     mapping(address => uint256) nonces;
 
-    function MESH() public {
+    function SMT() public {
         allocateEndTime = now + 1 days;
     }
 
     /*
-     * Proxy transfer MESH. When some users of the ethereum account has no ether,
+     * Proxy transfer SmartMesh token. When some users of the ethereum account has no ether,
      * he or she can authorize the agent for broadcast transactions, and agents may charge agency fees
      * @param _from
      * @param _to
      * @param _value
-     * @param feeMesh
+     * @param feeSmt
      * @param _v
      * @param _r
      * @param _s
      */
-    function transferProxy(address _from, address _to, uint256 _value, uint256 _feeMesh,
+    function transferProxy(address _from, address _to, uint256 _value, uint256 _feeSmt,
         uint8 _v,bytes32 _r, bytes32 _s) public transferAllowed(_from) returns (bool){
 
-        if(balances[_from] < _feeMesh + _value) revert();
+        if(balances[_from] < _feeSmt + _value) revert();
 
         uint256 nonce = nonces[_from];
-        bytes32 h = keccak256(_from,_to,_value,_feeMesh,nonce,name);
+        bytes32 h = keccak256(_from,_to,_value,_feeSmt,nonce);
         if(_from != ecrecover(h,_v,_r,_s)) revert();
 
         if(balances[_to] + _value < balances[_to]
-            || balances[msg.sender] + _feeMesh < balances[msg.sender]) revert();
+            || balances[msg.sender] + _feeSmt < balances[msg.sender]) revert();
         balances[_to] += _value;
         Transfer(_from, _to, _value);
 
-        balances[msg.sender] += _feeMesh;
-        Transfer(_from, msg.sender, _feeMesh);
+        balances[msg.sender] += _feeSmt;
+        Transfer(_from, msg.sender, _feeSmt);
 
-        balances[_from] -= _value + _feeMesh;
+        balances[_from] -= _value + _feeSmt;
         nonces[_from] = nonce + 1;
         return true;
     }
@@ -232,7 +229,7 @@ contract MESH is StandardToken {
     /*
      * Proxy approve that some one can authorize the agent for broadcast transaction
      * which call approve method, and agents may charge agency fees
-     * @param _from The address which should tranfer MESH to others
+     * @param _from The address which should tranfer SMT to others
      * @param _spender The spender who allowed by _from
      * @param _value The value that should be tranfered.
      * @param _v
@@ -243,7 +240,7 @@ contract MESH is StandardToken {
         uint8 _v,bytes32 _r, bytes32 _s) public returns (bool success) {
 
         uint256 nonce = nonces[_from];
-        bytes32 hash = keccak256(_from,_spender,_value,nonce,name);
+        bytes32 hash = keccak256(_from,_spender,_value,nonce);
         if(_from != ecrecover(hash,_v,_r,_s)) revert();
         allowed[_from][_spender] = _value;
         Approval(_from, _spender, _value);
@@ -272,7 +269,7 @@ contract MESH is StandardToken {
         return true;
     }
 
-    /* Approves and then calls the contract code */
+    /* Approves and then calls the contract code*/
     function approveAndCallcode(address _spender, uint256 _value, bytes _extraData) public returns (bool success) {
         allowed[msg.sender][_spender] = _value;
         Approval(msg.sender, _spender, _value);
@@ -280,11 +277,6 @@ contract MESH is StandardToken {
         //Call the contract code
         if(!_spender.call(_extraData)) { revert(); }
         return true;
-    }
-
-   /* Refundable tokens sent to the smart contract for misoperation of the user */
-    function getBackToken(address _spender,address _to,uint256 _value) public onlyOwner{
-        if(!_spender.call(bytes4(bytes32(keccak256("transfer(address,uint256)"))), _to, _value)) { revert(); }
     }
 
     // Allocate tokens to the users
@@ -303,3 +295,4 @@ contract MESH is StandardToken {
             balances[to] += value;
         }
     }
+}
